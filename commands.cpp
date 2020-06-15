@@ -9,7 +9,7 @@ void commandLoop(int argc, char* argv[]) {
     std::string cmd = "";
 
     for(int i = 1; i < argc; ++i) cmd += std::string(argv[i]) + " ";
-
+    
     do {
         if(argc == 1 && !getline(std::cin, cmd)) cmd = "quit";
         std::istringstream iss(cmd);
