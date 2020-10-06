@@ -1,9 +1,11 @@
+//Generates bitboards
+
 #include "bitboard.h"
 #include "utils.h"
 #include <iostream>
 #include <algorithm>
 
-// From Teki
+// Below is from Teki
 int distanceVal[64][64];
 Bitboard attacksRay[64][64];
 Bitboard attacksXray[64][64];
@@ -353,7 +355,8 @@ namespace lookups
         return atk;
     }
 
-    Bitboard attacks(int piece_type, int square, Bitboard occupancy, int side) {
+    Bitboard attacks(int piece_type, int square, Bitboard occupancy, int side)
+    {
         switch(piece_type) {
         case PAWN: return pawn(square, side);
         case KNIGHT: return knight(square);
