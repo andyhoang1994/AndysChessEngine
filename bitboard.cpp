@@ -35,6 +35,7 @@ Bitboard eastRegion[64];
 Bitboard westRegion[64];
 
 Bitboard passedPawnMask[64];
+Bitboard outpostMask[64];
 Bitboard kingThreats[64];
 Bitboard kingShelters[64][2];
 
@@ -92,14 +93,12 @@ void init_misc()
         maskFile[i] = lookups::getNorth(i) | lookups::getSouth(i) | getBit(i);
         maskRank[i] = lookups::getEast(i) | lookups::getWest(i) | getBit(i);
         passedPawnMask[i] = 0;
-        if(getFile(i) != FILE_A)
-        {
+        if(getFile(i) != FILE_A) {
             passedPawnMask[i] |= north[i - 1] | north[i];
             adjacentFiles[i] |= getBit(i - 1) | north[i - 1] | south[i - 1];
             adjacentSquares[i] |= getBit(i - 1);
         }
-        if(getFile(i) != FILE_H)
-        {
+        if(getFile(i) != FILE_H) {
             passedPawnMask[i] |= north[i + 1] | north[i];
             adjacentFiles[i] |= getBit(i + 1) | north[i + 1] | south[i + 1];
             adjacentSquares[i] |= getBit(i + 1);
@@ -171,6 +170,9 @@ void init_misc()
             }
         }
     }
+    for(Square square = A1; square < SQUARE_COUNT; ++square) {
+        outpostMask[square] = passedPawnMask[square] & maskFile[square];
+    }
 }
 
 void init_directions() {
@@ -227,11 +229,12 @@ void init_eval_masks() {
             getBit(i)
             | lookups::king(i)
             | (lookups::king(i) >> 8);
-        if(i < 56) {
-            kingShelters[i][0] = getBit(i + 8)
-                | (lookups::king(i) & (lookups::king(i + 8) << 8));
-            if(i < 48)
-                kingShelters[i][1] = kingShelters[i][0] << 8;
+        kingShelters[i][WHITE] = kingShelters[i][BLACK] = getBit(i) | lookups::king(i);
+        if(i < 8) {
+            kingShelters[i][WHITE] |=  lookups::king(i + 8);
+        }
+        if(i > 55) {
+            kingShelters[i][BLACK] |= lookups::king(i - 8);
         }
     }
 }
@@ -241,13 +244,13 @@ void init_regions() {
     for(Square square = A1; square < SQUARE_COUNT; ++square) {
         nr = wr = sr = er = 0ULL;
         for(int r = getRank(square) + 1; r <= RANK_8; ++r)
-            nr |= lookups::rank_mask(getSquare(FILE_A, r));
+            nr |= lookups::rankMask(getSquare(FILE_A, r));
         for(int r = getRank(square) - 1; r >= RANK_1; --r)
-            sr |= lookups::rank_mask(getSquare(FILE_A, r));
+            sr |= lookups::rankMask(getSquare(FILE_A, r));
         for(int f = getFile(square) + 1; f <= FILE_H; ++f)
-            er |= lookups::file_mask(getSquare(f, RANK_1));
+            er |= lookups::fileMask(getSquare(f, RANK_1));
         for(int f = getFile(square) - 1; f >= FILE_A; --f)
-            wr |= lookups::file_mask(getSquare(f, RANK_1));
+            wr |= lookups::fileMask(getSquare(f, RANK_1));
 
         northRegion[square] = nr;
         southRegion[square] = sr;
@@ -274,8 +277,8 @@ namespace lookups
     Bitboard intervening_sqs(int from, int to) { return attacksInterveningRay[from][to]; }
     Bitboard adjacent_files(int square) { return adjacentFiles[square]; }
     Bitboard adjacent_sqs(int square) { return adjacentSquares[square]; }
-    Bitboard file_mask(int square) { return maskFile[square]; }
-    Bitboard rank_mask(int square) { return maskRank[square]; }
+    Bitboard fileMask(int square) { return maskFile[square]; }
+    Bitboard rankMask(int square) { return maskRank[square]; }
 
     Bitboard getNorth(int square) { return north[square]; }
     Bitboard getSouth(int square) { return south[square]; }
@@ -365,14 +368,16 @@ namespace lookups
         }
     }
 
-    Bitboard getPassedPawnMask(int square) { return passedPawnMask[square]; }
+    Bitboard getPassedPawnMask(int square) {
+        return passedPawnMask[square];
+        }
+    Bitboard getOutpostMask(Square square) {
+        return outpostMask[square];
+    }
     Bitboard getKingDangerZone(Colour c, Square square) {
         return relativeBoard(c, kingThreats[relativeSquare(c, square)]);
     }
-    std::pair<Bitboard, Bitboard> kingShelterMasks(Colour c, Square square) {
-        return {
-            relativeBoard(c, kingShelters[relativeSquare(c, square)][0]),
-            relativeBoard(c, kingShelters[relativeSquare(c, square)][1])
-        };
+    Bitboard kingShelter(Colour c, Square square) {
+        return kingShelters[square][c];
     }
 }

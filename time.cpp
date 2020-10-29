@@ -13,7 +13,7 @@ namespace {
     enum TimeType { OptimumTime, MaxTime };
 
     const int MoveHorizon = 50;
-    const double MaxRatio = 6.93;
+    const double MaxRatio = 1; //6.93
     const double StealRatio = 0.36;
 
     double move_importance(int ply) {

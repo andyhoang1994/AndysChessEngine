@@ -44,8 +44,8 @@ namespace lookups
 	extern Bitboard intervening_sqs(int from, int to);
 	extern Bitboard adjacent_files(int square);
 	extern Bitboard adjacent_sqs(int square);
-	extern Bitboard file_mask(int square);
-	extern Bitboard rank_mask(int square);
+	extern Bitboard fileMask(int square);
+	extern Bitboard rankMask(int square);
 
 	extern Bitboard getNorth(int square);
 	extern Bitboard getSouth(int square);
@@ -72,8 +72,9 @@ namespace lookups
 	extern Bitboard attacks(int piece_type, int square, Bitboard occupancy, int side = WHITE);
 
 	extern Bitboard getPassedPawnMask(int square);
+	extern Bitboard getOutpostMask(Square square);
 	extern Bitboard getKingDangerZone(Colour c, Square square);
-	extern std::pair<Bitboard, Bitboard> kingShelterMasks(Colour c, Square square);
+	extern Bitboard kingShelter(Colour c, Square square);
 }
 
 inline Bitboard getBit(int shift) {

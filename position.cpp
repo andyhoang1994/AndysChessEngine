@@ -468,10 +468,10 @@ void Position::makeMove(Undo* undo, Move move) {
 		break;
 	}
 	}
+
 	this->switchSides();
 	positionKey = generatePositionKey();
 	++ply;
-
 }
 
 void Position::undoMove(Undo* undo, Move move) {

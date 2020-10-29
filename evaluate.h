@@ -51,23 +51,32 @@ public:
     Evaluate(Position& position) : position(position) {}
     Value value();
 private:
-    int get_game_phase();
-    Score pawnScore();
-    Score pieceScore();
-    Score passedPawnScore();
-    Score kingScore();
+    int getGamePhase();
+    Score pawnScore(Colour colour);
+    Score knightScore(Colour colour);
+    Score bishopScore(Colour colour);
+    Score rookScore(Colour colour);
+    Score queenScore(Colour colour);
+    Score pieceScore(Colour colour);
+    Score passedPawnScore(Colour colour);
+    Score kingShelterScore(Colour colour);
+    Score kingScore(Colour colour);
+    Score threatScore(Colour colour);
+    Score spaceScore(Colour colour);
+
 
     // Data members
-    int kingAttacks[COLOUR_COUNT] = {0};
-    Bitboard blockedPawns[COLOUR_COUNT] = {0};
-    Bitboard passedPawns[COLOUR_COUNT] = {0};
-    Bitboard attackedBy[COLOUR_COUNT][7] = {0}; // Why 8
-    Bitboard mobilityArea[COLOUR_COUNT] = {0};
+    int kingAttacks[COLOUR_COUNT] = { 0 };
+    Bitboard blockedPawns[COLOUR_COUNT] = { 0 };
+    Bitboard passedPawns[COLOUR_COUNT] = { 0 };
+    Bitboard attackedBy[COLOUR_COUNT][7] = { 0 };
+    Bitboard attackedByMore[COLOUR_COUNT] = { 0 };
+    Bitboard mobility[COLOUR_COUNT] = { 0 };
     Position& position;
 };
 
 inline Value Score::value() const { return mg; }
-inline Value Score::value(int phase, int max_phase) const { return Value(((mg * phase) + (eg * (max_phase - phase))) / max_phase); }
+inline Value Score::value(int phase, int max_phase) const { return Value(((mg * (max_phase - phase)) + (eg * phase)) / max_phase); }
 
 inline const Score Score::operator-() const { return Score(-mg, -eg); }
 
@@ -135,16 +144,56 @@ inline Score S(Value val) { return Score(val); }
 inline Score S(int mg, int eg) { return Score(mg, eg); }
 
 // Maybe change piecePhase in the future
-inline int piecePhase[6] = { 0, 1, 10, 10, 20, 40, };
+inline int piecePhase[6] = { 0, 0, 1, 1, 2, 4 };
 inline int kingAttackValue[7] = { 0, 0, 3, 3, 4, 5, 0, };
 inline Score pieceValue[7] = { Score(), S(valuePawnMg, valuePawnEg), S(valueKnightMg, valueKnightEg), S(valueBishopMg, valueBishopEg), S(valueRookMg, valueRookEg), S(valueQueenMg, valueQueenEg), Score() };
+
+inline Score weakSquare = S(40, 40);
+inline Score hangingPiece = S(35, 15);
+inline Score tempo = S(20, 20);
+
 inline Score doubledPawn = S(-10, -10);
 inline Score isolatedPawn = S(-10, -10);
-inline Score rookOn7th = S(40, 20);
-inline Score bishopPair = S(30, 100);
-inline Score closeShelter = S(30, 5);
-inline Score farShelter = S(20, 5);
-inline Score tempo = S(20, 20);
+
+inline Score minorBehindPawn = S(20, 1);
+inline Score knightOutpost = S(30, -1);
+inline Score bishopOutpost = (35, -1);
+inline Score bishopPair = S(20, 80);
+
+inline Score rookOnSeventh = S(1, 40);
+
+inline Score blockedPawnStorm[RANK_COUNT] = {
+    S(0, 0), S(0, 0), S(76, 78), S(-10, 15), S(-7, 10), S(-4, 6), S(-1, 2)
+};
+inline Score unblockedPawnStorm[int(FILE_COUNT) / 2][RANK_COUNT] = {
+    { S(85, 0), S(-289, 0), S(-166, 0), S(97, 0), S(50, 0), S(45, 0), S(50, 0) },
+    { S(46, 0), S(-25, 0), S(122, 0), S(45, 0), S(37, 0), S(-10, 0), S(20, 0) },
+    { S(-6, 0), S(51, 0), S(168, 0), S(34, 0), S(-2, 0), S(-22, 0), S(-14, 0) },
+    { S(-15, 0), S(-11, 0), S(101, 0), S(4, 0), S(11, 0), S(-15, 0), S(-29, 0) }
+};
+inline Score pawnShelter[int(FILE_COUNT) / 2][RANK_COUNT] = {
+    { S(-6, 0),  S(81, 0),  S(93, 0),  S(58, 0),  S(39, 0),  S(18, 0),  S(25, 0) },
+    { S(-43, 0), S(61, 0),  S(35, 0),  S(-49, 0), S(-29, 0), S(-11, 0), S(-63, 0) },
+    { S(-10, 0), S(75, 0),  S(23, 0),  S(-2, 0),  S(32, 0),  S(3, 0),   S(-45, 0) },
+    { S(-39, 0), S(-13, 0), S(-29, 0), S(-52, 0), S(-48, 0), S(-67, 0), S(-166, 0) }
+};
+
+
+inline Score safeQueenCheckScore = S(93, 83);
+inline Score safeRookCheckScore = S(90, 98);
+inline Score safeBishopCheckScore = S(59, 59);
+inline Score safeKnightCheckScore = S(112, 117);
+
+inline Score threatBySafePawn = S(85, 45);
+inline Score threatByPawnPush = S(25, 20);
+inline Score threatByMinor[PIECE_TYPE_COUNT] = {
+    S(0, 0), S(5, 15), S(25, 20), S(35, 25), S(45, 60), S(40, 80)
+};
+inline Score threatByRook[PIECE_TYPE_COUNT] = {
+    S(0, 0), S(3, 20), S(20, 30), S(20, 30), S(0, 20), S(30, 20)
+};
+inline Score threatByKing = S(10, 45);
+
 inline Score mobilityBonus[6][32] = {
     { },
     { },
@@ -177,24 +226,17 @@ inline Score mobilityBonus[6][32] = {
 };
 
 inline Score passedRank[RANK_COUNT] = {
-    S(0, 0), S(10, 30), S(15, 30), S(15, 40), S(60, 70), S(170, 180), S(270, 260)
+    S(0, 0), S(-28,  23), S(-41,  38), S(-59,  61),
+    S(9,  81), S(111, 139), S(168, 278), S(0,   0),
 };
 
-inline int kingAttackTable[100] = {
-      0,   0,   0,   1,   1,   2,   3,   4,   5,   6,
-      8,  10,  13,  16,  20,  25,  30,  36,  42,  48,
-     55,  62,  70,  80,  90, 100, 110, 120, 130, 140,
-    150, 160, 170, 180, 190, 200, 210, 220, 230, 240,
-    250, 260, 270, 280, 290, 300, 310, 320, 330, 340,
-    350, 360, 370, 380, 390, 400, 410, 420, 430, 440,
-    450, 460, 470, 480, 490, 500, 510, 520, 530, 540,
-    550, 560, 570, 580, 590, 600, 610, 620, 630, 640,
-    650, 650, 650, 650, 650, 650, 650, 650, 650, 650,
-    650, 650, 650, 650, 650, 650, 650, 650, 650, 650
+inline Score kingDefenders[12] = {
+    S(-29,  -3), S(-13,   2), S(0,   6), S(11,   8),
+    S(19,   7), S(30,  -2), S(34, -12), S(12,  -3),
+    S(12,   6), S(12,   6), S(12,   6), S(12,   6),
 };
 
 inline int kingAttackWeight[6] = { 0, 2, 3, 3, 4, 5 };
-
 
 inline Score pieceSquareBonus[PIECE_TYPE_COUNT][SQUARE_COUNT] =  {
     { },
@@ -307,6 +349,3 @@ inline Score pieceSquareBonus[PIECE_TYPE_COUNT][SQUARE_COUNT] =  {
         S(-37, -25), S(-28, -28), S(62, -69), S(-49,-113),
     }
 };
-
-int moveBestCaseValue(Position* position);
-int moveEstimatedValue(Position* position, Move move);

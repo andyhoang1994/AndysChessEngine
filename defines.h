@@ -216,12 +216,17 @@ ENABLE_FULL_OPERATORS_ON(Value)
 
 inline int getSquare(int file, int rank) { return (rank << 3) ^ file; }
 inline Rank getRank(Square square) { return Rank(square >> 3); }
-inline Rank relativeRank(Colour colour, Square square) { return Rank((square >> 3) ^ (colour * 7)); }
+inline Rank relativeRank(Colour colour, Square square) {
+	return Rank((square >> 3) ^ (colour * 7));
+}
 inline Rank relativeRank(Colour c, Rank r) {
 	return Rank(r ^ (c * 7));
 }
 inline File getFile(Square square) { return File(square & 7); }
 inline Rank getRelativeFile(Colour colour, Square square) { return Rank((square >> 3) ^ (colour * 7)); }
+inline int edgeDistance(File f) {
+	return std::min(f, File(FILE_H - f));
+}
 
 constexpr Colour operator~(Colour colour) {
 	return Colour(colour ^ BLACK);
@@ -257,12 +262,17 @@ inline Move fromAndTo(Square from, Square to) {
 inline int popCount(Bitboard bb) {
 	return _mm_popcnt_u64(bb);
 }
-inline Square fbitscan(Bitboard bb) {
+inline Square fbitscan(Bitboard bb) { //lsb
 	return Square(_tzcnt_u64(bb));
 }
-inline Square rbitscan(Bitboard bb) {
+inline Square rbitscan(Bitboard bb) { //msb
 	return Square(63 - _lzcnt_u64(bb));
 }
+
+inline Square relativeFirstBit(Colour c, Bitboard bb) {
+	return c == WHITE ? rbitscan(bb) : fbitscan(bb);
+}
+
 inline Bitboard flipBoard(Bitboard bb) {
 	return bb ^ 56;
 }

@@ -261,6 +261,7 @@ void Thread::search() {
         mainThread->easyMovePlayed = mainThread->failedLow = false;
         mainThread->bestMoveChanges = 0;
         TT.new_search();
+        check_time();
     }
 
     size_t multiPV = Options["MultiPV"];
